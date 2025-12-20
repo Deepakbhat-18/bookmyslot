@@ -13,7 +13,7 @@ public class TeacherSlot {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // teacher is a User with role TEACHER
+
     @ManyToOne
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
@@ -34,7 +34,6 @@ public class TeacherSlot {
         BLOCKED
     }
 
-    // getters & setters
 
     public Long getId() { return id; }
 
