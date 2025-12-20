@@ -12,12 +12,12 @@ public class SlotBooking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // which slot
+    
     @ManyToOne
     @JoinColumn(name = "slot_id", nullable = false)
     private TeacherSlot slot;
 
-    // which student
+
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -32,9 +32,6 @@ public class SlotBooking {
         BOOKED,
         CANCELLED
     }
-
-    // getters & setters
-
     public Long getId() { return id; }
 
     public void setId(Long id) { this.id = id; }
