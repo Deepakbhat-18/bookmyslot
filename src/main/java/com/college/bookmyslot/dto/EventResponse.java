@@ -1,5 +1,8 @@
 package com.college.bookmyslot.dto;
 
+import lombok.Data;
+
+@Data
 public class EventResponse {
 
     private Long eventId;

@@ -58,7 +58,6 @@ public class Event {
         CANCELLED
     }
 
-    // getters & setters
     public Long getId() { return id; }
 
     public Club getClub() { return club; }

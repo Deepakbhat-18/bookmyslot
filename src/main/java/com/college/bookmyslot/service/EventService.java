@@ -1,0 +1,145 @@
+package com.college.bookmyslot.service;
+
+import com.college.bookmyslot.dto.EventCreateRequest;
+import com.college.bookmyslot.dto.EventListResponse;
+import com.college.bookmyslot.dto.EventResponse;
+import com.college.bookmyslot.dto.EventUpdateRequest;
+import com.college.bookmyslot.model.Club;
+import com.college.bookmyslot.model.Event;
+import com.college.bookmyslot.repository.ClubRepository;
+import com.college.bookmyslot.repository.EventRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class EventService {
+
+    private final EventRepository eventRepository;
+    private final ClubRepository clubRepository;
+
+    public EventService(EventRepository eventRepository,
+                        ClubRepository clubRepository) {
+        this.eventRepository = eventRepository;
+        this.clubRepository = clubRepository;
+    }
+
+    public EventResponse createEvent(Long clubId, EventCreateRequest request) {
+
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found"));
+
+        Event event = new Event();
+        event.setClub(club);
+        event.setTitle(request.getTitle());
+        event.setDescription(request.getDescription());
+        event.setVenue(request.getVenue());
+
+        event.setEventDate(LocalDate.parse(request.getEventDate()));
+        event.setStartTime(LocalTime.parse(request.getStartTime()));
+        event.setEndTime(LocalTime.parse(request.getEndTime()));
+
+        event.setTotalSlots(request.getMaxSeats());
+        event.setBookedSlots(0);
+
+        if (request.isPaid()) {
+            event.setEventType(Event.EventType.PAID);
+            event.setTicketPrice(request.getPrice());
+        } else {
+            event.setEventType(Event.EventType.FREE);
+            event.setTicketPrice(0.0);
+        }
+
+        Event saved = eventRepository.save(event);
+        return mapToEventResponse(saved);
+    }
+
+    public EventResponse updateEvent(Long eventId, EventUpdateRequest request) {
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        event.setTitle(request.getTitle());
+        event.setDescription(request.getDescription());
+        event.setVenue(request.getVenue());
+
+        event.setStartTime(LocalTime.parse(request.getStartTime()));
+        event.setEndTime(LocalTime.parse(request.getEndTime()));
+
+        event.setTotalSlots(request.getMaxSeats());
+
+        if (request.isPaid()) {
+            event.setEventType(Event.EventType.PAID);
+            event.setTicketPrice(request.getPrice());
+        } else {
+            event.setEventType(Event.EventType.FREE);
+            event.setTicketPrice(0.0);
+        }
+
+        Event updated = eventRepository.save(event);
+        return mapToEventResponse(updated);
+    }
+
+    public List<EventListResponse> listEventsByDate(String date) {
+
+        LocalDate eventDate = LocalDate.parse(date);
+
+        return eventRepository.findByEventDate(eventDate)
+                .stream()
+                .map(this::mapToEventListResponse)
+                .collect(Collectors.toList());
+    }
+
+    public EventResponse getEventById(Long eventId) {
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        return mapToEventResponse(event);
+    }
+
+    private EventResponse mapToEventResponse(Event event) {
+
+        EventResponse r = new EventResponse();
+        r.setEventId(event.getId());
+        r.setTitle(event.getTitle());
+        r.setDescription(event.getDescription());
+        r.setVenue(event.getVenue());
+        r.setEventDate(event.getEventDate().toString());
+        r.setStartTime(event.getStartTime().toString());
+        r.setEndTime(event.getEndTime().toString());
+        r.setPaid(event.getEventType() == Event.EventType.PAID);
+        r.setPrice(event.getTicketPrice());
+        r.setTotalSeats(event.getTotalSlots());
+        r.setAvailableSeats(event.getTotalSlots() - event.getBookedSlots());
+        r.setClubName(event.getClub().getName());
+
+        return r;
+    }
+
+    private EventListResponse mapToEventListResponse(Event event) {
+
+        EventListResponse r = new EventListResponse();
+        r.setEventId(event.getId());
+        r.setTitle(event.getTitle());
+        r.setVenue(event.getVenue());
+        r.setEventDate(event.getEventDate().toString());
+        r.setStartTime(event.getStartTime().toString());
+        r.setPaid(event.getEventType() == Event.EventType.PAID);
+        r.setPrice(event.getTicketPrice());
+        r.setAvailableSeats(event.getTotalSlots() - event.getBookedSlots());
+
+        return r;
+    }
+    public EventResponse getEventDetails(Long eventId) {
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        return mapToEventResponse(event);
+    }
+
+}

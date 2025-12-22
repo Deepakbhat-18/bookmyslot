@@ -46,6 +46,7 @@ public class EventTicket {
         PENDING,
         CHECKED_IN
     }
+
     public Long getId() { return id; }
 
     public Event getEvent() { return event; }

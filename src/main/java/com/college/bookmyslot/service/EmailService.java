@@ -39,21 +39,29 @@ public class EmailService {
     }
 
     public void sendOtpEmail(String to, String name, String otp, String purpose) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(to);
-        message.setSubject("Your OTP for " + purpose);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(to);
+            message.setSubject("BookMySlot OTP - " + purpose);
 
-        StringBuilder text = new StringBuilder();
-        text.append("Hi ").append(name).append(",\n\n");
-        text.append("Your OTP for ").append(purpose).append(" is: ").append(otp).append("\n");
-        text.append("This OTP is valid for 10 minutes.\n\n");
-        text.append("If you did not request this, please ignore.\n\n");
-        text.append("Regards,\nBookMySlot Team");
+            String text =
+                    "Hi " + name + ",\n\n" +
+                            "Your OTP for " + purpose + " is: " + otp + "\n\n" +
+                            "This OTP is valid for 10 minutes.\n\n" +
+                            "If you did not request this, please ignore this email.\n\n" +
+                            "Regards,\n" +
+                            "BookMySlot Team";
 
-        message.setText(text.toString());
+            message.setText(text);
 
-        mailSender.send(message);
+            mailSender.send(message);
+
+        } catch (Exception e) {
+
+            System.err.println("Failed to send OTP email to " + to);
+            e.printStackTrace();
+        }
     }
 
     public void sendSlotBookingEmail(String to, String name, String teacherName,

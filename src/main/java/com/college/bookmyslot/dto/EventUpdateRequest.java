@@ -1,5 +1,8 @@
 package com.college.bookmyslot.dto;
 
+import lombok.Data;
+
+@Data
 public class EventUpdateRequest {
 
     private String title;
@@ -11,7 +14,6 @@ public class EventUpdateRequest {
 
     private boolean paid;
     private double price;
+
     private int maxSeats;
-
-
 }

@@ -11,6 +11,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
 
     List<Event> findByClub(Club club);
+    List<Event> findByStatusOrderByEventDateAsc(Event.Status status);
 
 
     List<Event> findByEventDate(LocalDate eventDate);
@@ -22,14 +23,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> findByEventDateAndStatus(
             LocalDate eventDate,
             Event.Status status
-    );
-
-
-    List<Event> findByEventDateGreaterThanEqual(LocalDate date);
-
-
-    List<Event> findByEventDateAndBookedSlotsLessThan(
-            LocalDate eventDate,
-            int totalSlots
     );
 }

@@ -31,7 +31,6 @@ public class CalendarController {
         this.userRepository = userRepository;
     }
 
-    // ===== TEACHER VIEW: all their slots and bookings as calendar events =====
     @GetMapping("/teacher/{teacherId}")
     public List<CalendarEventDto> getTeacherCalendar(@PathVariable Long teacherId) {
 
@@ -40,7 +39,6 @@ public class CalendarController {
 
         List<CalendarEventDto> events = new ArrayList<>();
 
-        // 1) Teacher's own slots
         List<TeacherSlot> slots = slotRepository.findByTeacher(teacher);
         for (TeacherSlot slot : slots) {
             CalendarEventDto dto = new CalendarEventDto();
@@ -55,7 +53,6 @@ public class CalendarController {
             events.add(dto);
         }
 
-        // 2) Bookings on those slots
         List<SlotBooking> bookings = bookingRepository.findBySlot_Teacher(teacher);
         for (SlotBooking booking : bookings) {
             CalendarEventDto dto = new CalendarEventDto();
@@ -74,7 +71,6 @@ public class CalendarController {
         return events;
     }
 
-    // ===== STUDENT VIEW: all their bookings as calendar events =====
     @GetMapping("/student/{studentId}")
     public List<CalendarEventDto> getStudentCalendar(@PathVariable Long studentId) {
 
