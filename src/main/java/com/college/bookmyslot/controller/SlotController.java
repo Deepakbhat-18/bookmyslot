@@ -32,7 +32,7 @@ public class SlotController {
         this.emailService = emailService;
     }
 
-  //This is used by the teacher to create slot
+
     @PostMapping("/create")
     public TeacherSlot createSlot(@RequestBody CreateSlotRequest request) {
 
@@ -53,7 +53,7 @@ public class SlotController {
         return slotRepository.save(slot);
     }
 
-    //LIST AVAILABLE SLOTS BY DATE
+
     @GetMapping("/available")
     public List<TeacherSlot> getAvailableSlots(@RequestParam String date) {
         LocalDate d = LocalDate.parse(date);
@@ -61,7 +61,6 @@ public class SlotController {
     }
 
 
-    // STUDENT BOOKS SLOT
     @PostMapping("/book")
     public SlotBooking bookSlot(@RequestBody BookSlotRequest request) {
 

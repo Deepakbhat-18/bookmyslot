@@ -43,7 +43,14 @@ public class AuthController {
             role = User.Role.valueOf(request.getRole().toUpperCase());
         } catch (Exception e) {
             throw new RuntimeException(
-                    "Invalid role. Use STUDENT, TEACHER, CLUB or ADMIN"
+                    "Invalid role. Use STUDENT or TEACHER"
+            );
+        }
+
+
+        if (role == User.Role.CLUB || role == User.Role.ADMIN) {
+            throw new RuntimeException(
+                    "This role cannot self-register. Please contact admin."
             );
         }
 
@@ -60,25 +67,12 @@ public class AuthController {
             user.setUsn(request.getUsn());
         }
 
-
-        if (role == User.Role.CLUB) {
-            if (request.getClubId() == null) {
-                throw new RuntimeException("Club ID is required for club staff");
-            }
-
-            Club club = clubRepository.findById(request.getClubId())
-                    .orElseThrow(() -> new RuntimeException("Club not found"));
-
-            user.setClub(club);
-        }
-
         String otp = String.valueOf(100000 + new Random().nextInt(900000));
         user.setOtp(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
         user.setVerified(false);
 
         userRepository.save(user);
-
 
         try {
             emailService.sendOtpEmail(
@@ -87,7 +81,6 @@ public class AuthController {
                     otp,
                     "Account Verification"
             );
-
         } catch (Exception e) {
             System.err.println("OTP email failed: " + e.getMessage());
         }
@@ -98,8 +91,7 @@ public class AuthController {
                 null
         );
     }
-
-    @PostMapping("/verify-otp")
+ @PostMapping("/verify-otp")
     public ApiResponse<String> verifyOtp(
             @RequestBody OtpVerifyRequest request
     ) {
@@ -126,7 +118,6 @@ public class AuthController {
                 null
         );
     }
-
     @PostMapping("/resend-otp")
     public ApiResponse<String> resendOtp(
             @RequestBody ResendOtpRequest request
@@ -157,8 +148,6 @@ public class AuthController {
                 null
         );
     }
-
-
     @PostMapping("/login")
     public ApiResponse<Object> login(@RequestBody LoginRequest request) {
 
@@ -172,7 +161,6 @@ public class AuthController {
         if (!user.isVerified()) {
             throw new RuntimeException("Email not verified");
         }
-
         return new ApiResponse<>(
                 true,
                 "Login successful",

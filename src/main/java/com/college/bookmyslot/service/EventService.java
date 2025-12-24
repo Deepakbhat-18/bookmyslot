@@ -6,8 +6,10 @@ import com.college.bookmyslot.dto.EventResponse;
 import com.college.bookmyslot.dto.EventUpdateRequest;
 import com.college.bookmyslot.model.Club;
 import com.college.bookmyslot.model.Event;
+import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.ClubRepository;
 import com.college.bookmyslot.repository.EventRepository;
+import com.college.bookmyslot.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -20,28 +22,38 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final ClubRepository clubRepository;
-
+    private final UserRepository userRepository;
     public EventService(EventRepository eventRepository,
-                        ClubRepository clubRepository) {
+                        ClubRepository clubRepository,UserRepository userRepository) {
         this.eventRepository = eventRepository;
         this.clubRepository = clubRepository;
+        this.userRepository=userRepository;
     }
 
-    public EventResponse createEvent(Long clubId, EventCreateRequest request) {
+    public EventResponse createEventByStaff(
+            Long staffUserId,
+            EventCreateRequest request
+    ) {
 
-        Club club = clubRepository.findById(clubId)
-                .orElseThrow(() -> new RuntimeException("Club not found"));
+        User staff = userRepository.findById(staffUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (staff.getRole() != User.Role.CLUB) {
+            throw new RuntimeException("Only club staff can create events");
+        }
+
+        if (staff.getClub() == null) {
+            throw new RuntimeException("Club staff is not linked to any club");
+        }
 
         Event event = new Event();
-        event.setClub(club);
+        event.setClub(staff.getClub());
         event.setTitle(request.getTitle());
         event.setDescription(request.getDescription());
         event.setVenue(request.getVenue());
-
         event.setEventDate(LocalDate.parse(request.getEventDate()));
         event.setStartTime(LocalTime.parse(request.getStartTime()));
         event.setEndTime(LocalTime.parse(request.getEndTime()));
-
         event.setTotalSlots(request.getMaxSeats());
         event.setBookedSlots(0);
 
@@ -56,6 +68,7 @@ public class EventService {
         Event saved = eventRepository.save(event);
         return mapToEventResponse(saved);
     }
+
 
     public EventResponse updateEvent(Long eventId, EventUpdateRequest request) {
 

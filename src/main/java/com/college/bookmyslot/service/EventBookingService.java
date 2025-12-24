@@ -9,6 +9,7 @@ import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.EventBookingRepository;
 import com.college.bookmyslot.repository.EventRepository;
 import com.college.bookmyslot.repository.UserRepository;
+import com.college.bookmyslot.util.GoogleCalendarUtil;
 import com.college.bookmyslot.util.QRCodeUtil;
 import org.springframework.stereotype.Service;
 
@@ -23,13 +24,18 @@ public class EventBookingService {
     private final EventRepository eventRepository;
     private final EventBookingRepository eventBookingRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
-    public EventBookingService(EventRepository eventRepository,
-                               EventBookingRepository eventBookingRepository,
-                               UserRepository userRepository) {
+    public EventBookingService(
+            EventRepository eventRepository,
+            EventBookingRepository eventBookingRepository,
+            UserRepository userRepository,
+            EmailService emailService
+    ) {
         this.eventRepository = eventRepository;
         this.eventBookingRepository = eventBookingRepository;
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     public EventBookingResponse bookEvent(EventBookingRequest request) {
@@ -65,7 +71,45 @@ public class EventBookingService {
         event.setBookedSlots(event.getBookedSlots() + 1);
         eventRepository.save(event);
 
+
+        eventBookingRepository.save(booking);
+        event.setBookedSlots(event.getBookedSlots() + 1);
+        eventRepository.save(event);
+
+
+        try {
+            emailService.sendEventBookingEmail(
+                    student.getEmail(),
+                    student.getName(),
+                    event.getTitle(),
+                    event.getVenue(),
+                    event.getEventDate().toString(),
+                    event.getStartTime() + " - " + event.getEndTime(),
+                    booking.getTicketId()
+            );
+        } catch (Exception e) {
+            System.out.println("Email failed: " + e.getMessage());
+        }
+
+
+
+
+        try {
+            emailService.sendEventBookingEmail(
+                    event.getClub().getEmail(),
+                    event.getClub().getName(),
+                    event.getTitle(),
+                    event.getVenue(),
+                    event.getEventDate().toString(),
+                    event.getStartTime() + " - " + event.getEndTime(),
+                    booking.getTicketId()
+            );
+
+        } catch (Exception e) {
+            System.out.println("Email failed: " + e.getMessage());
+        }
         return mapToResponse(booking);
+
     }
 
 
@@ -131,8 +175,22 @@ public class EventBookingService {
 
         r.setQrCodeUrl("data:image/png;base64," + qrBase64);
 
-        r.setGoogleCalendarLink(null);
+        String calendarLink = GoogleCalendarUtil.generateEventLink(
+                event.getTitle(),
+                event.getDescription(),
+                event.getVenue(),
+                event.getEventDate(),
+                event.getStartTime(),
+                event.getEndTime()
+        );
+
+        r.setGoogleCalendarLink(calendarLink);
+
 
         return r;
+
+
+
+
     }
 }

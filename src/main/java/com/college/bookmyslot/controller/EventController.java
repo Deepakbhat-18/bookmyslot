@@ -20,13 +20,13 @@ public class EventController {
         this.eventService = eventService;
     }
 
-    @PostMapping("/club/{clubId}")
-    public EventResponse createEvent(
-            @PathVariable Long clubId,
-            @RequestBody EventCreateRequest request
-    ) {
-        return eventService.createEvent(clubId, request);
-    }
+@PostMapping
+public EventResponse createEvent(
+        @RequestParam Long staffUserId,
+        @RequestBody EventCreateRequest request
+) {
+    return eventService.createEventByStaff(staffUserId, request);
+}
 
     @PutMapping("/{eventId}")
     public EventResponse updateEvent(

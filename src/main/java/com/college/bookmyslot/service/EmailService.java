@@ -116,5 +116,33 @@ public class EmailService {
 
         mailSender.send(message);
     }
+    public void sendEventBookingEmail(
+            String to,
+            String studentName,
+            String eventTitle,
+            String venue,
+            String eventDate,
+            String eventTime,
+            String ticketId
+    ) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(to);
+        message.setSubject("Event Booking Confirmed - " + eventTitle);
+
+        message.setText(
+                "Hi " + studentName + ",\n\n" +
+                        "Your booking is confirmed 🎉\n\n" +
+                        "Event: " + eventTitle + "\n" +
+                        "Venue: " + venue + "\n" +
+                        "Date: " + eventDate + "\n" +
+                        "Time: " + eventTime + "\n" +
+                        "Ticket ID: " + ticketId + "\n\n" +
+                        "Please bring your QR code at entry.\n\n" +
+                        "Regards,\nBookMySlot Team"
+        );
+
+        mailSender.send(message);
+    }
 
 }
