@@ -3,11 +3,16 @@ package com.college.bookmyslot.controller;
 import com.college.bookmyslot.dto.ApiResponse;
 import com.college.bookmyslot.dto.ClubCreateRequest;
 import com.college.bookmyslot.dto.ClubStaffCreateRequest;
+import com.college.bookmyslot.dto.EventListResponse;
 import com.college.bookmyslot.model.Club;
+import com.college.bookmyslot.model.Event;
 import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.ClubRepository;
+import com.college.bookmyslot.repository.EventRepository;
 import com.college.bookmyslot.repository.UserRepository;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/clubs")
@@ -16,10 +21,11 @@ public class AdminClubController {
 
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
-
-    public AdminClubController(ClubRepository clubRepository,UserRepository userRepository ) {
+    private final EventRepository eventRepository;
+    public AdminClubController(ClubRepository clubRepository, UserRepository userRepository, EventRepository eventRepository ) {
         this.clubRepository = clubRepository;
         this.userRepository=userRepository;
+        this.eventRepository = eventRepository;
     }
 
 
@@ -67,7 +73,7 @@ public class AdminClubController {
         User staff = new User();
         staff.setName(request.getName());
         staff.setEmail(request.getEmail());
-        staff.setPassword(request.getPassword()); // plain for now
+        staff.setPassword(request.getPassword());
         staff.setRole(User.Role.CLUB);
         staff.setClub(club);
         staff.setVerified(true); // admin-created → auto verified
@@ -81,4 +87,55 @@ public class AdminClubController {
         );
     }
 
+    @GetMapping
+    public List<Club> getAllClubs() {
+        return clubRepository.findAll();
+    }
+
+    @PutMapping("/{clubId}/status")
+    public ApiResponse<String> updateClubStatus(
+            @PathVariable Long clubId,
+            @RequestParam Club.Status status
+    ) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found"));
+
+        club.setStatus(status);
+        clubRepository.save(club);
+
+        return new ApiResponse<>(
+                true,
+                "Club status updated to " + status,
+                null
+        );
+    }
+
+
+    @GetMapping("/{clubId}/events")
+    public List<EventListResponse> getClubEvents(
+            @PathVariable Long clubId
+    ) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new RuntimeException("Club not found"));
+
+        return eventRepository.findByClub(club)
+                .stream()
+                .map(event -> {
+                    EventListResponse r = new EventListResponse();
+                    r.setEventId(event.getId());
+                    r.setTitle(event.getTitle());
+                    r.setVenue(event.getVenue());
+                    r.setEventDate(event.getEventDate().toString());
+                    r.setStartTime(event.getStartTime().toString());
+                    r.setPaid(event.getEventType() == Event.EventType.PAID);
+                    r.setPrice(event.getTicketPrice());
+                    r.setAvailableSeats(
+                            event.getTotalSlots() - event.getBookedSlots()
+                    );
+                    return r;
+                })
+                .toList();
+    }
 }
+
+
