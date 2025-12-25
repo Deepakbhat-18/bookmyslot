@@ -19,6 +19,7 @@ import java.util.UUID;
 
 
 @Service
+
 public class EventBookingService {
 
     private final EventRepository eventRepository;
@@ -38,6 +39,7 @@ public class EventBookingService {
         this.emailService = emailService;
     }
 
+    // ================= FREE EVENT BOOKING =================
     public EventBookingResponse bookEvent(EventBookingRequest request) {
 
         Event event = eventRepository.findById(request.getEventId())
@@ -46,73 +48,52 @@ public class EventBookingService {
         User student = userRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
+        if (event.getEventType() == Event.EventType.PAID) {
+            throw new RuntimeException("Payment required before booking");
+        }
+
+        return createBooking(event, student, false);
+    }
+
+    // ================= PAID EVENT (AFTER PAYMENT) =================
+    public EventBookingResponse bookEventAfterPayment(Event event, User student) {
+        return createBooking(event, student, true);
+    }
+
+    // ================= COMMON BOOKING LOGIC =================
+    private EventBookingResponse createBooking(Event event, User student, boolean paid) {
+
         if (event.getBookedSlots() >= event.getTotalSlots()) {
             throw new RuntimeException("Event is fully booked");
         }
 
         eventBookingRepository.findByEventAndStudent(event, student)
                 .ifPresent(b -> {
-                    throw new RuntimeException("You have already booked this event");
+                    throw new RuntimeException("Already booked");
                 });
 
         EventBooking booking = new EventBooking();
         booking.setEvent(event);
         booking.setStudent(student);
         booking.setTicketId(UUID.randomUUID().toString());
-        booking.setPaid(event.getEventType() == Event.EventType.PAID);
-        booking.setAmountPaid(
-                event.getEventType() == Event.EventType.PAID
-                        ? event.getTicketPrice()
-                        : 0.0
-        );
+        booking.setPaid(paid);
+        booking.setAmountPaid(paid ? event.getTicketPrice() : 0.0);
 
         eventBookingRepository.save(booking);
 
         event.setBookedSlots(event.getBookedSlots() + 1);
         eventRepository.save(event);
 
+        // 📧 Email to student
+        sendBookingEmail(student, event, booking);
 
-        eventBookingRepository.save(booking);
-        event.setBookedSlots(event.getBookedSlots() + 1);
-        eventRepository.save(event);
+        // 📧 Email to club
+        sendBookingEmailToClub(event, booking);
 
-
-        try {
-            emailService.sendEventBookingEmail(
-                    student.getEmail(),
-                    student.getName(),
-                    event.getTitle(),
-                    event.getVenue(),
-                    event.getEventDate().toString(),
-                    event.getStartTime() + " - " + event.getEndTime(),
-                    booking.getTicketId()
-            );
-        } catch (Exception e) {
-            System.out.println("Email failed: " + e.getMessage());
-        }
-
-
-
-
-        try {
-            emailService.sendEventBookingEmail(
-                    event.getClub().getEmail(),
-                    event.getClub().getName(),
-                    event.getTitle(),
-                    event.getVenue(),
-                    event.getEventDate().toString(),
-                    event.getStartTime() + " - " + event.getEndTime(),
-                    booking.getTicketId()
-            );
-
-        } catch (Exception e) {
-            System.out.println("Email failed: " + e.getMessage());
-        }
         return mapToResponse(booking);
-
     }
 
-
+    // ================= CHECK-IN =================
     public void checkInTicket(String ticketId, Long staffUserId) {
 
         EventBooking booking = eventBookingRepository.findByTicketId(ticketId)
@@ -128,7 +109,7 @@ public class EventBookingService {
         Club eventClub = booking.getEvent().getClub();
         if (staff.getClub() == null ||
                 !staff.getClub().getId().equals(eventClub.getId())) {
-            throw new RuntimeException("You are not authorized to check-in this event");
+            throw new RuntimeException("Unauthorized staff");
         }
 
         if (booking.isCheckedIn()) {
@@ -137,60 +118,73 @@ public class EventBookingService {
 
         booking.setCheckedIn(true);
         booking.setCheckedInAt(LocalDateTime.now());
-
         eventBookingRepository.save(booking);
     }
 
+    // ================= EMAIL HELPERS =================
+    private void sendBookingEmail(User student, Event event, EventBooking booking) {
+        try {
+            emailService.sendEventBookingEmail(
+                    student.getEmail(),
+                    student.getName(),
+                    event.getTitle(),
+                    event.getVenue(),
+                    event.getEventDate().toString(),
+                    event.getStartTime() + " - " + event.getEndTime(),
+                    booking.getTicketId()
+            );
+        } catch (Exception e) {
+            System.out.println("Student email failed");
+        }
+    }
 
+    private void sendBookingEmailToClub(Event event, EventBooking booking) {
+        try {
+            emailService.sendEventBookingEmail(
+                    event.getClub().getEmail(),
+                    event.getClub().getName(),
+                    event.getTitle(),
+                    event.getVenue(),
+                    event.getEventDate().toString(),
+                    event.getStartTime() + " - " + event.getEndTime(),
+                    booking.getTicketId()
+            );
+        } catch (Exception e) {
+            System.out.println("Club email failed");
+        }
+    }
 
-    private EventBookingResponse mapToResponse(EventBooking booking) {
-
-
+    // ================= RESPONSE MAPPER =================
+    public EventBookingResponse mapToResponse(EventBooking booking) {
 
         Event event = booking.getEvent();
         User student = booking.getStudent();
 
         EventBookingResponse r = new EventBookingResponse();
         r.setTicketId(booking.getTicketId());
-
         r.setEventTitle(event.getTitle());
         r.setVenue(event.getVenue());
         r.setEventDate(event.getEventDate().toString());
-        r.setEventTime(
-                event.getStartTime().toString() + " - " + event.getEndTime().toString()
-        );
-
+        r.setEventTime(event.getStartTime() + " - " + event.getEndTime());
         r.setStudentName(student.getName());
         r.setStudentEmail(student.getEmail());
-
         r.setPaid(booking.isPaid());
         r.setAmountPaid(booking.getAmountPaid());
 
+        String qrPayload = "ticketId=" + booking.getTicketId() + "&eventId=" + event.getId();
+        r.setQrCodeUrl("data:image/png;base64," + QRCodeUtil.generateQRCode(qrPayload));
 
-        String qrPayload =
-                "ticketId=" + booking.getTicketId() +
-                        "&eventId=" + event.getId();
-
-        String qrBase64 = QRCodeUtil.generateQRCode(qrPayload);
-
-        r.setQrCodeUrl("data:image/png;base64," + qrBase64);
-
-        String calendarLink = GoogleCalendarUtil.generateEventLink(
-                event.getTitle(),
-                event.getDescription(),
-                event.getVenue(),
-                event.getEventDate(),
-                event.getStartTime(),
-                event.getEndTime()
+        r.setGoogleCalendarLink(
+                GoogleCalendarUtil.generateEventLink(
+                        event.getTitle(),
+                        event.getDescription(),
+                        event.getVenue(),
+                        event.getEventDate(),
+                        event.getStartTime(),
+                        event.getEndTime()
+                )
         );
 
-        r.setGoogleCalendarLink(calendarLink);
-
-
         return r;
-
-
-
-
     }
 }

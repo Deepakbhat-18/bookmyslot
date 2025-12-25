@@ -22,8 +22,7 @@ public class User {
     private String email;
 
     @Column(unique = true)
-    private String usn; // only for students
-
+    private String usn;
     @Column(nullable = false)
     private String password;
 

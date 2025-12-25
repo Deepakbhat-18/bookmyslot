@@ -32,7 +32,7 @@ public class AnalyticsController {
         this.bookingRepository = bookingRepository;
     }
 
-    // ===== OVERVIEW (same as before) =====
+
     @GetMapping("/overview")
     public Map<String, Object> overview() {
         Map<String, Object> resp = new HashMap<>();

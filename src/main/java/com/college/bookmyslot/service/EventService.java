@@ -30,10 +30,7 @@ public class EventService {
         this.userRepository=userRepository;
     }
 
-    public EventResponse createEventByStaff(
-            Long staffUserId,
-            EventCreateRequest request
-    ) {
+    public EventResponse createEventByStaff(Long staffUserId, EventCreateRequest request) {
 
         User staff = userRepository.findById(staffUserId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -46,16 +43,31 @@ public class EventService {
             throw new RuntimeException("Club staff is not linked to any club");
         }
 
+        Club club = staff.getClub();
+
+        if (club.getStatus() != Club.Status.ACTIVE) {
+            throw new RuntimeException("Club is inactive. Cannot create events.");
+        }
+
+        LocalTime start = LocalTime.parse(request.getStartTime());
+        LocalTime end = LocalTime.parse(request.getEndTime());
+
+        if (!start.isBefore(end)) {
+            throw new RuntimeException("Start time must be before end time");
+        }
+
         Event event = new Event();
-        event.setClub(staff.getClub());
+        event.setClub(club);
         event.setTitle(request.getTitle());
         event.setDescription(request.getDescription());
         event.setVenue(request.getVenue());
         event.setEventDate(LocalDate.parse(request.getEventDate()));
-        event.setStartTime(LocalTime.parse(request.getStartTime()));
-        event.setEndTime(LocalTime.parse(request.getEndTime()));
+        event.setStartTime(start);
+        event.setEndTime(end);
         event.setTotalSlots(request.getMaxSeats());
         event.setBookedSlots(0);
+        event.setStatus(Event.Status.DRAFT);
+
 
         if (request.isPaid()) {
             event.setEventType(Event.EventType.PAID);
@@ -100,11 +112,13 @@ public class EventService {
 
         LocalDate eventDate = LocalDate.parse(date);
 
-        return eventRepository.findByEventDate(eventDate)
+        return eventRepository
+                .findByEventDateAndStatus(eventDate, Event.Status.PUBLISHED)
                 .stream()
                 .map(this::mapToEventListResponse)
                 .collect(Collectors.toList());
     }
+
 
     public EventResponse getEventById(Long eventId) {
 
