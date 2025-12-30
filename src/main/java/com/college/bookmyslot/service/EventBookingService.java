@@ -8,37 +8,38 @@ import com.college.bookmyslot.model.EventBooking;
 import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.EventBookingRepository;
 import com.college.bookmyslot.repository.EventRepository;
+import com.college.bookmyslot.repository.SlotBookingRepository;
 import com.college.bookmyslot.repository.UserRepository;
 import com.college.bookmyslot.util.GoogleCalendarUtil;
 import com.college.bookmyslot.util.QRCodeUtil;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-
-
 @Service
-
 public class EventBookingService {
 
     private final EventRepository eventRepository;
     private final EventBookingRepository eventBookingRepository;
     private final UserRepository userRepository;
+    private final SlotBookingRepository slotBookingRepository;
     private final EmailService emailService;
 
     public EventBookingService(
             EventRepository eventRepository,
             EventBookingRepository eventBookingRepository,
             UserRepository userRepository,
+            SlotBookingRepository slotBookingRepository,
             EmailService emailService
     ) {
         this.eventRepository = eventRepository;
         this.eventBookingRepository = eventBookingRepository;
         this.userRepository = userRepository;
+        this.slotBookingRepository = slotBookingRepository;
         this.emailService = emailService;
     }
-
 
     public EventBookingResponse bookEvent(EventBookingRequest request) {
 
@@ -55,13 +56,18 @@ public class EventBookingService {
         return createBooking(event, student, false);
     }
 
-
+    @Transactional
     public EventBookingResponse bookEventAfterPayment(Event event, User student) {
         return createBooking(event, student, true);
     }
 
 
-    private EventBookingResponse createBooking(Event event, User student, boolean paid) {
+    @Transactional
+    private EventBookingResponse createBooking(
+            Event event,
+            User student,
+            boolean paid
+    ) {
 
         if (event.getBookedSlots() >= event.getTotalSlots()) {
             throw new RuntimeException("Event is fully booked");
@@ -69,8 +75,36 @@ public class EventBookingService {
 
         eventBookingRepository.findByEventAndStudent(event, student)
                 .ifPresent(b -> {
-                    throw new RuntimeException("Already booked");
+                    throw new RuntimeException("Already booked this event");
                 });
+
+        boolean eventConflict =
+                eventBookingRepository.existsOverlappingEventBooking(
+                        student,
+                        event.getEventDate(),
+                        event.getStartTime(),
+                        event.getEndTime()
+                );
+
+        if (eventConflict) {
+            throw new RuntimeException(
+                    "You already have another event at this time"
+            );
+        }
+
+        boolean slotConflict =
+                slotBookingRepository.existsOverlappingSlotBooking(
+                        student,
+                        event.getEventDate(),
+                        event.getStartTime(),
+                        event.getEndTime()
+                );
+
+        if (slotConflict) {
+            throw new RuntimeException(
+                    "You already have a teacher slot at this time"
+            );
+        }
 
         EventBooking booking = new EventBooking();
         booking.setEvent(event);
@@ -84,10 +118,7 @@ public class EventBookingService {
         event.setBookedSlots(event.getBookedSlots() + 1);
         eventRepository.save(event);
 
-
         sendBookingEmail(student, event, booking);
-
-
         sendBookingEmailToClub(event, booking);
 
         return mapToResponse(booking);
@@ -131,8 +162,7 @@ public class EventBookingService {
                     event.getStartTime() + " - " + event.getEndTime(),
                     booking.getTicketId()
             );
-        } catch (Exception e) {
-            System.out.println("Student email failed");
+        } catch (Exception ignored) {
         }
     }
 
@@ -147,8 +177,7 @@ public class EventBookingService {
                     event.getStartTime() + " - " + event.getEndTime(),
                     booking.getTicketId()
             );
-        } catch (Exception e) {
-            System.out.println("Club email failed");
+        } catch (Exception ignored) {
         }
     }
 
@@ -168,8 +197,12 @@ public class EventBookingService {
         r.setPaid(booking.isPaid());
         r.setAmountPaid(booking.getAmountPaid());
 
-        String qrPayload = "ticketId=" + booking.getTicketId() + "&eventId=" + event.getId();
-        r.setQrCodeUrl("data:image/png;base64," + QRCodeUtil.generateQRCode(qrPayload));
+        String qrPayload =
+                "ticketId=" + booking.getTicketId() + "&eventId=" + event.getId();
+
+        r.setQrCodeUrl(
+                "data:image/png;base64," + QRCodeUtil.generateQRCode(qrPayload)
+        );
 
         r.setGoogleCalendarLink(
                 GoogleCalendarUtil.generateEventLink(

@@ -2,8 +2,11 @@ package com.college.bookmyslot.repository;
 
 import com.college.bookmyslot.model.Event;
 import com.college.bookmyslot.model.EventBooking;
+import com.college.bookmyslot.model.SlotBooking;
 import com.college.bookmyslot.model.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -35,5 +38,21 @@ AND eb.reminderSent = false
             @Param("from") LocalTime from,
             @Param("to") LocalTime to
     );
+    @Query("""
+SELECT COUNT(eb) > 0
+FROM EventBooking eb
+WHERE eb.student = :student
+  AND eb.event.eventDate = :date
+  AND eb.event.startTime < :endTime
+  AND eb.event.endTime > :startTime
+""")
+    boolean existsOverlappingEventBooking(
+            @Param("student") User student,
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
+
+
 
 }

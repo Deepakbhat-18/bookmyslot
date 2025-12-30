@@ -1,9 +1,13 @@
 package com.college.bookmyslot.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "slot_bookings")
 public class SlotBooking {
@@ -32,23 +36,5 @@ public class SlotBooking {
         BOOKED,
         CANCELLED
     }
-    public Long getId() { return id; }
 
-    public void setId(Long id) { this.id = id; }
-
-    public TeacherSlot getSlot() { return slot; }
-
-    public void setSlot(TeacherSlot slot) { this.slot = slot; }
-
-    public User getStudent() { return student; }
-
-    public void setStudent(User student) { this.student = student; }
-
-    public LocalDateTime getBookedAt() { return bookedAt; }
-
-    public void setBookedAt(LocalDateTime bookedAt) { this.bookedAt = bookedAt; }
-
-    public Status getStatus() { return status; }
-
-    public void setStatus(Status status) { this.status = status; }
 }
