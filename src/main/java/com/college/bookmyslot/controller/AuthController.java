@@ -6,6 +6,7 @@ import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.ClubRepository;
 import com.college.bookmyslot.repository.UserRepository;
 import com.college.bookmyslot.service.EmailService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -88,32 +89,29 @@ public class AuthController {
         );
     }
 
-    @PostMapping("/verify-otp")
-    public ApiResponse<String> verifyOtp(@RequestBody OtpVerifyRequest request) {
+@PostMapping("/verify-otp")
+public ApiResponse<String> verifyOtp(@RequestBody OtpVerifyRequest request) {
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    User user = userRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user.isVerified()) {
-            return new ApiResponse<>(true, "Already verified", null);
-        }
-
-        if (!request.getOtp().equals(user.getOtp())
-                || user.getOtpExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Invalid or expired OTP");
-        }
-
-        user.setVerified(true);
-        user.setOtp(null);
-        user.setOtpExpiry(null);
-        userRepository.save(user);
-
-        return new ApiResponse<>(
-                true,
-                "Email verified successfully",
-                null
-        );
+    if (user.isVerified()) {
+        return new ApiResponse<>(true, "Already verified", null);
     }
+
+    if (!request.getOtp().equals(user.getOtp()) ||
+            user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+        throw new RuntimeException("Invalid or expired OTP");
+    }
+
+    user.setVerified(true);
+    user.setOtp(null);
+    user.setOtpExpiry(null);
+    userRepository.save(user);
+
+    return new ApiResponse<>(true, "Email verified successfully", null);
+}
+
 
     @PostMapping("/resend-otp")
     public ApiResponse<String> resendOtp(@RequestBody ResendOtpRequest request) {
@@ -145,34 +143,33 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@RequestBody LoginRequest request) {
-
+    public ApiResponse<String> login(
+            @RequestBody LoginRequest request,
+            HttpSession session
+    ) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-
-        if (!user.getPassword().equals(request.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
         if (!user.isVerified()) {
-            throw new RuntimeException("Email not verified");
+            throw new RuntimeException("Please verify your email first");
         }
 
-        LoginResponse response = new LoginResponse();
-        response.setUserId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole().name());
-        response.setUsn(user.getUsn());
-        response.setClubId(
-                user.getClub() != null ? user.getClub().getId() : null
-        );
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+        session.setAttribute("USER_ID", user.getId());
+        session.setAttribute("ROLE", user.getRole().name());
 
         return new ApiResponse<>(
                 true,
                 "Login successful",
-                response
+                null
         );
+    }
+    @PostMapping("/logout")
+    public ApiResponse<String> logout(HttpSession session) {
+        session.invalidate();
+        return new ApiResponse<>(true, "Logged out successfully", null);
     }
 
     @PutMapping("/users/{id}/deactivate")
