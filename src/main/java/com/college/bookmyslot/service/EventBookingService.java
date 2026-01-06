@@ -220,6 +220,7 @@
 //}
 package com.college.bookmyslot.service;
 
+import com.college.bookmyslot.dto.MyEventBookingResponse;
 import com.college.bookmyslot.dto.EventBookingRequest;
 import com.college.bookmyslot.dto.EventBookingResponse;
 import com.college.bookmyslot.model.Club;
@@ -236,6 +237,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -269,7 +271,9 @@ public class EventBookingService {
 
         User student = userRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
-
+if(event.getStatus() != Event.Status.PUBLISHED){
+    throw new RuntimeException("event not open for booking");
+}
         if (event.getEventType() == Event.EventType.PAID) {
             throw new RuntimeException("Payment required before booking");
         }
@@ -333,7 +337,7 @@ public class EventBookingService {
         booking.setTicketId(UUID.randomUUID().toString());
         booking.setPaid(paid);
         booking.setAmountPaid(paid ? event.getTicketPrice() : 0.0);
-
+        booking.setBookingStatus(EventBooking.BookingStatus.CONFIRMED);
         eventBookingRepository.save(booking);
 
         event.setBookedSlots(event.getBookedSlots() + 1);
@@ -432,4 +436,76 @@ public class EventBookingService {
         );
         return r;
     }
+    @Transactional
+    public void cancelBooking(Long bookingId, Long userId) {
+
+        EventBooking booking = eventBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!booking.getStudent().getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        if (booking.getBookingStatus() == EventBooking.BookingStatus.CANCELLED) {
+            throw new RuntimeException("Already cancelled");
+        }
+
+        Event event = booking.getEvent();
+        LocalDateTime eventStart =
+                LocalDateTime.of(event.getEventDate(), event.getStartTime());
+
+        booking.setBookingStatus(EventBooking.BookingStatus.CANCELLED);
+
+        if (LocalDateTime.now().isBefore(eventStart)) {
+            booking.setRefundStatus(EventBooking.RefundStatus.REFUNDED);
+        } else {
+            booking.setRefundStatus(EventBooking.RefundStatus.NOT_ELIGIBLE);
+        }
+
+        event.setBookedSlots(event.getBookedSlots() - 1);
+        eventRepository.save(event);
+
+        eventBookingRepository.save(booking);
+    }
+    public List<MyEventBookingResponse> getMyBookings(Long userId) {
+
+        User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return eventBookingRepository.findByStudent(student)
+                .stream()
+                .map(this::mapToMyBookingResponse)
+                .toList();
+    }
+
+
+    private MyEventBookingResponse mapToMyBookingResponse(EventBooking booking) {
+
+        Event event = booking.getEvent();
+
+        MyEventBookingResponse dto = new MyEventBookingResponse();
+
+        dto.setBookingId(booking.getId());
+        dto.setEventTitle(event.getTitle());
+        dto.setVenue(event.getVenue());
+        dto.setEventDate(event.getEventDate().toString());
+        dto.setEventTime(event.getStartTime() + " - " + event.getEndTime());
+        dto.setBookingDate(
+                booking.getBookedAt().toLocalDate().toString()
+        );
+
+        dto.setBookingStatus(
+                booking.getBookingStatus().name()
+        );
+
+        dto.setRefundStatus(
+                booking.getRefundStatus() != null
+                        ? booking.getRefundStatus().name()
+                        : "NOT_APPLICABLE"
+        );
+
+        return dto;
+    }
+
+
 }

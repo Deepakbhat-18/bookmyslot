@@ -36,5 +36,22 @@ public class EventBooking {
     private LocalDateTime checkedInAt;
 
     private LocalDateTime bookedAt = LocalDateTime.now();
+    @Enumerated(EnumType.STRING)
+    private BookingStatus bookingStatus = BookingStatus.CONFIRMED;
 
+    @Enumerated(EnumType.STRING)
+    private RefundStatus refundStatus = RefundStatus.NOT_APPLICABLE;
+
+    private LocalDateTime cancelledAt;
+
+        public enum BookingStatus {
+            CONFIRMED,
+            CANCELLED
+        }
+
+        public enum RefundStatus {
+            NOT_APPLICABLE,
+            REFUNDED,
+            NOT_ELIGIBLE
+        }
 }
