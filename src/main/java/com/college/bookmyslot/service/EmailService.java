@@ -193,43 +193,9 @@ public class EmailService {
 
         mailSender.send(message);
     }
-
     @Recover
     public void recover(Exception ex, Object... args) {
         System.err.println("❌ Email failed after retries: " + ex.getMessage());
 
-    }
-    @Async
-    @Retryable(
-            value = Exception.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 2000)
-    )
-    public void sendEventCancelEmail(
-            String to,
-            String studentName,
-            String eventTitle,
-            String venue,
-            String eventDate,
-            String eventTime,
-            String ticketId
-    ) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(to);
-        message.setSubject("Event Booking is cancelled - " + eventTitle);
-
-        message.setText(
-                "Hi " + studentName + ",\n\n" +
-                        "Your booking is cancelled \n\n" +
-                        "Event: " + eventTitle + "\n" +
-                        "Venue: " + venue + "\n" +
-                        "Date: " + eventDate + "\n" +
-                        "Time: " + eventTime + "\n" +
-                        "Ticket ID: " + ticketId + "\n\n" +
-                        "Regards,\nBookMySlot Team"
-        );
-
-        mailSender.send(message);
     }
 }
