@@ -3,14 +3,15 @@ package com.college.bookmyslot.repository;
 import com.college.bookmyslot.model.Club;
 import com.college.bookmyslot.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
 
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
-    boolean existsByClub(Club club);
-
+    //boolean existsByClub(Club club);
+boolean existsByClubAndActive(Club club,boolean active);
 
     boolean existsByEmail(String email);
 
@@ -19,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(User.Role role);
 
     Optional<Object> findByUsn(String usn);
+    List<User> findByRole(User.Role role);
+
 }

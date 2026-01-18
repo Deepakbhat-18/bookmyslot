@@ -38,4 +38,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             Event.Status status,
             Pageable pageable
     );
+
 }

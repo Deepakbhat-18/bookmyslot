@@ -2,8 +2,11 @@ package com.college.bookmyslot.controller;
 
 import com.college.bookmyslot.dto.*;
 import com.college.bookmyslot.model.Event;
+import com.college.bookmyslot.model.User;
 import com.college.bookmyslot.repository.EventRepository;
+import com.college.bookmyslot.repository.UserRepository;
 import com.college.bookmyslot.service.EventService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,21 +22,44 @@ public class EventController {
 
     private final EventService eventService;
 
-    private final EventRepository eventRepository; //
+    private final EventRepository eventRepository;//
+    private final UserRepository userRepository;
 
     public EventController(EventService eventService,
-                           EventRepository eventRepository) {
+                           EventRepository eventRepository,UserRepository userRepository) {
         this.eventService = eventService;
         this.eventRepository = eventRepository;
+        this.userRepository=userRepository;
     }
 
-@PostMapping
-public EventResponse createEvent(
-        @RequestParam Long staffUserId,
-        @RequestBody EventCreateRequest request
-) {
-    return eventService.createEventByStaff(staffUserId, request);
-}
+    @PostMapping
+    public EventResponse createEvent(
+            HttpSession session,
+            @RequestBody EventCreateRequest request
+    ) {
+        Long staffUserId = (Long) session.getAttribute("USER_ID");
+
+        if (staffUserId == null) {
+            throw new RuntimeException("Not logged in");
+        }
+
+        return eventService.createEventByStaff(staffUserId, request);
+    }
+
+    @GetMapping("/staff/{staffUserId}")
+    public List<EventResponse> getEventsByStaff(
+            @PathVariable Long staffUserId
+    ) {
+        User staff = userRepository.findById(staffUserId)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        return eventRepository.findByClub(staff.getClub())
+                .stream()
+                .map(event -> eventService.getEventDetails(event.getId()))
+                .toList();
+    }
+
+
 
     @PutMapping("/{eventId}")
     public EventResponse updateEvent(
@@ -84,6 +110,7 @@ public EventResponse createEvent(
 
         return new ApiResponse<>(true, "Poster uploaded successfully", posterUrl);
     }
+
 
 }
 //@RestController

@@ -143,7 +143,7 @@ public ApiResponse<String> verifyOtp(@RequestBody OtpVerifyRequest request) {
     }
 
     @PostMapping("/login")
-    public ApiResponse<String> login(
+    public ApiResponse<LoginResponse> login(
             @RequestBody LoginRequest request,
             HttpSession session
     ) {
@@ -160,11 +160,19 @@ public ApiResponse<String> verifyOtp(@RequestBody OtpVerifyRequest request) {
         session.setAttribute("USER_ID", user.getId());
         session.setAttribute("ROLE", user.getRole().name());
 
-        return new ApiResponse<>(
-                true,
-                "Login successful",
-                null
-        );
+        LoginResponse response = new LoginResponse();
+        response.setUserId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole().name());
+        response.setUsn(user.getUsn());
+
+        if (user.getClub() != null) {
+            response.setClubId(user.getClub().getId());
+        }
+
+        return new ApiResponse<>(true, "Login successful", response);
+
     }
     @PostMapping("/logout")
     public ApiResponse<String> logout(HttpSession session) {

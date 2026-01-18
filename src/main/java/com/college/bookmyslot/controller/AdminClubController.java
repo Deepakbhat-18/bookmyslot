@@ -1,5 +1,6 @@
 package com.college.bookmyslot.controller;
 
+import com.college.bookmyslot.service.EmailService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,10 +27,12 @@ public class AdminClubController {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
-    public AdminClubController(ClubRepository clubRepository, UserRepository userRepository, EventRepository eventRepository ) {
+    private final EmailService emailService;
+    public AdminClubController(ClubRepository clubRepository, UserRepository userRepository, EventRepository eventRepository ,EmailService emailService) {
         this.clubRepository = clubRepository;
         this.userRepository=userRepository;
         this.eventRepository = eventRepository;
+        this.emailService= emailService;
     }
 
 
@@ -66,10 +69,13 @@ public class AdminClubController {
         Club club = clubRepository.findById(request.getClubId())
                 .orElseThrow(() -> new RuntimeException("Club not found"));
 
-        if (userRepository.existsByClub(club)) {
-            throw new RuntimeException("This club already has a staff");
-        }
-
+//        if (userRepository.existsByClubAndActive(club)) {
+//            throw new RuntimeException("This club already has active staff");
+//        }
+boolean hacActiveStaff=userRepository.existsByClubAndActive(club,true);
+if(hacActiveStaff){
+    throw new RuntimeException("This club already has active staff");
+}
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already in use");
         }
@@ -83,10 +89,16 @@ public class AdminClubController {
         staff.setVerified(true); // admin-created → auto verified
 
         userRepository.save(staff);
+        emailService.sendWelcomeEmail(
+                staff.getEmail(),
+                staff.getName(),
+                "CLUB STAFF",
+                null
+        );
 
         return new ApiResponse<>(
                 true,
-                "Club staff created successfully",
+                "Club staff created and email send successfully",
                 null
         );
     }

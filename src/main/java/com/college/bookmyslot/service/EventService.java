@@ -113,7 +113,7 @@ public EventResponse createEventByStaff(
     event.setEndTime(LocalTime.parse(request.getEndTime()));
     event.setTotalSlots(request.getMaxSeats());
     event.setBookedSlots(0);
-
+    event.setStatus(Event.Status.DRAFT);
     if (request.isPaid()) {
         event.setEventType(Event.EventType.PAID);
         event.setTicketPrice(request.getPrice());
@@ -172,7 +172,7 @@ public EventResponse createEventByStaff(
         return mapToEventResponse(event);
     }
 
-    private EventResponse mapToEventResponse(Event event) {
+    public EventResponse mapToEventResponse(Event event) {
 
         EventResponse r = new EventResponse();
         r.setEventId(event.getId());
